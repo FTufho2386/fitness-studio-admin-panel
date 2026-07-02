@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang='ru'>
+<head>
+    <meta charset='UTF-8'>
+    <title>Панель Администратора Фитнес-Клуба</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 40px;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+        button {
+            padding: 10px 18px;
+            font-size: 14px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button.refresh-btn {
+            background-color: #2ecc71;
+            margin-bottom: 15px;
+        }
+        button.refresh-btn:hover {
+            background-color: #27ae60;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #7f8c8d;
+        }
+        input[type='text'], input[type='number'], input[type='email'] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #prev;
+            border: 1px solid #f1f1f1;
+            text-align: left;
+        }
+        th {
+            background-color: #2c3e50;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🏋️‍♂️ Система Управления Студией Групповых Занятий</h1>
+
+    <div class='grid-container'>
+
+        <div class='left-column'>
+            <div class='container'>
+                <h3>👥 Список клиентов клуба</h3>
+                <button class='refresh-btn' onclick='loadMembers()'>🔄 Обновить данные</button>
+                <table id='membersTable'>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>ФИО</th>
+                            <th>Телефон</th>
+                            <th>Email</th>
+                            <th>Баланс</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class='right-column'>
+
+            <div class='container'>
+                <h3>➕ Регистрация клиента</h3>
+                <div class='form-group'>
+                    <label>ФИО клиента</label>
+                    <input type='text' id='addName' placeholder='Иван Иванов'>
+                </div>
+                <div class='form-group'>
+                    <label>Телефон</label>
+                    <input type='text' id='addPhone' placeholder='+79991112233'>
+                </div>
+                <div class='form-group'>
+                    <label>Email</label>
+                    <input type='email' id='addEmail' placeholder='ivan@mail.ru'>
+                </div>
+                <button onclick='addMember()'>Создать профиль</button>
+            </div>
+
+            <div class='container'>
+                <h3>📅 Запись на тренировку</h3>
+                <div class='form-group'>
+                    <label>ID Расписания (Занятия)</label>
+                    <input type='number' id='bookScheduleId' placeholder='Например: 1'>
+                </div>
+                <div class='form-group'>
+                    <label>ID Абонемента (Membership ID)</label>
+                    <input type='number' id='bookMembershipId' placeholder='Например: 3'>
+                </div>
+                <button onclick='bookWorkout()'>Проверить баланс и записать</button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://127.0.0.1:8000';
+
+        async function loadMembers() {
+            try {
+                let response = await fetch(`${BASE_URL}/members`);
+                let result = await response.json();
+
+                if (result.status === 'success') {
+                    let tbody = document.querySelector('#membersTable tbody');
+                    tbody.innerHTML = '';
+
+                    result.data.forEach(member => {
+                        let row = `<tr>
+                            <td>${member[0]}</td>
+                            <td>${member[1]}</td>
+                            <td>${member[2]}</td>
+                            <td>${member[3] ? member[3] : '<i>не указан</i>'}</td>
+                            <td><strong>${member[4]} руб.</strong></td>
+                        </tr>`;
+                        tbody.innerHTML += row;
+                    });
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки:', error);
+                alert('Не удалось связаться с сервером FastAPI');
+            }
+        }
+
+        async function addMember() {
+            // Вытаскиваем значения из инпутов (как textBox1.Text в C#)
+            let name = document.getElementById('addName').value;
+            let phone = document.getElementById('addPhone').value;
+            let email = document.getElementById('addEmail').value;
+
+            if (!name || !phone) {
+                alert('Имя и телефон обязательны для заполнения!');
+                return;
+            }
+
+            try {
+                let url = `${BASE_URL}/members/add?name=${encodeURIComponent(name)}&phone_number=${encodeURIComponent(phone)}&email=${encodeURIComponent(email)}`;
+
+                let response = await fetch(url, { method: 'POST' });
+                let result = await response.json();
+
+                if (result.status === 'success') {
+                    alert(result.message); // Показываем успешный ответ
+                    document.getElementById('addName').value = '';
+                    document.getElementById('addPhone').value = '';
+                    document.getElementById('addEmail').value = '';
+                    loadMembers();
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Ошибка при добавлении клиента');
+            }
+        }
+
+        async function bookWorkout() {
+            let scheduleId = document.getElementById('bookScheduleId').value;
+            let membershipId = document.getElementById('bookMembershipId').value;
+
+            if (!scheduleId || !membershipId) {
+                alert('Заполните оба ID!');
+                return;
+            }
+
+            try {
+                let url = `${BASE_URL}/bookings/book?schedule_id=${scheduleId}&membership_id=${membershipId}`;
+
+                let response = await fetch(url, { method: 'POST' });
+                let result = await response.json();
+
+                if (result.status === 'success') {
+                    alert('🎉 ' + result.message);
+                    loadMembers(); // Обновляем таблицу, чтобы увидеть, как списались деньги!
+                } else {
+                    alert('❌ Ошибка: ' + result.message);
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Ошибка отправки запроса на запись');
+            }
+        }
+
+        window.onload = loadMembers;
+    </script>
+</body>
+</html>
